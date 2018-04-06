@@ -56,6 +56,8 @@ public class RecorderThread implements Runnable {
             player.play();
 
             byte[] buffer = new byte[buffersize];
+            double meanRms = sd.getMeanRms();
+            double threshold = sd.getThreshold();
 
             while (true) {
 
@@ -70,10 +72,20 @@ public class RecorderThread implements Runnable {
                     if (recorder.read(buffer, 0, buffersize) < 0) {
                         Log.e(Utilities.LOG_TAG, "recorder write error");
                     }
+                    byte[] written;
+                    double rms = Utilities.rms(buffer);
 
+                    // if difference exceeds threshold
+                    // write a previously saved buffer instead
+                    if (Math.abs(meanRms - rms) > threshold + 1000) {
+                        written = sd.fifoSwap(buffer);
+                    }
+                    // otherwise, just play the sound
+                    else {
+                        written = buffer;
+                    }
 
-
-                    if (player.write(buffer, 0, buffer.length) < 0) {
+                    if (player.write(written, 0, buffer.length) < 0) {
                         Log.e(Utilities.LOG_TAG, "player read error");
                     }
                 }

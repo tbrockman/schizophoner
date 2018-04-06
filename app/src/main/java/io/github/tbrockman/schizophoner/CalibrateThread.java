@@ -43,7 +43,6 @@ public class CalibrateThread implements Runnable {
                     buffersize);
 
             recorder.startRecording();
-
             byte[] buffer = new byte[buffersize];
 
             while (true) {
@@ -58,8 +57,9 @@ public class CalibrateThread implements Runnable {
                     if (recorder.read(buffer, 0, buffersize) < 0) {
                         Log.e(Utilities.LOG_TAG, "recorder write error");
                     }
+
+                    sd.addFrame(buffer);
                     double rms = Utilities.rms(buffer);
-                    System.out.println(rms);
                     rmsValues.add(rms);
                 }
             }
