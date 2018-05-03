@@ -8,6 +8,7 @@ import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.widget.ProgressBar;
 
 import java.util.ArrayList;
 
@@ -43,34 +44,29 @@ public class CalibrateThread implements Runnable {
                     buffersize);
 
             recorder.startRecording();
-            byte[] buffer = new byte[buffersize];
+            short[] buffer = new short[buffersize];
 
             while (true) {
 
                 if (Thread.currentThread().isInterrupted()) {
-                    sd.setMeanRms(calculateMean(rmsValues));
+                    sd.setMeanRms(Utilities.calculateMean(rmsValues));
                     recorder.stop();
                     recorder.release();
-                    break;
+                    return;
                 } else {
 
-                    if (recorder.read(buffer, 0, buffersize) < 0) {
+                    int readSize;
+                    readSize = recorder.read(buffer, 0, buffersize);
+
+                    if (readSize < 0) {
                         Log.e(Utilities.LOG_TAG, "recorder write error");
                     }
 
-                    sd.addFrame(buffer);
-                    double rms = Utilities.rms(buffer);
+                    //sd.addShortFrame(buffer);
+                    double rms = Utilities.short_rms(buffer);
                     rmsValues.add(rms);
                 }
             }
         }
-    }
-
-    public static double calculateMean(ArrayList<Double> values) {
-        double acc = 0;
-        for (int i = 0; i < values.size(); i++) {
-            acc += values.get(i);
-        }
-        return acc / values.size();
     }
 }

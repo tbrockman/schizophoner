@@ -1,6 +1,7 @@
 package io.github.tbrockman.schizophoner;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Random;
 
@@ -8,15 +9,20 @@ public class SharedData {
 
     private volatile double meanRms;
     private volatile double threshold;
-    private volatile ArrayList<byte[]> pastFrames;
-    private Queue<byte[]> frameQueue;
+    private boolean randomReplace;
+    private volatile ArrayList<short[]> shortFrames;
+    private Queue<short[]> shortFrameQueue;
     private int maxFrames;
+    private int fillSize;
 
     public SharedData() {
-        this.meanRms = 12000;
+        this.meanRms = 0;
         this.threshold = 0;
-        this.maxFrames = 5000;
-        this.pastFrames = new ArrayList<>();
+        this.maxFrames = 1000;
+        this.shortFrames = new ArrayList<>();
+        this.shortFrameQueue = new LinkedList<short[]>();
+        this.randomReplace = false;
+        this.fillSize = 10;
     }
 
     public double getMeanRms() {
@@ -35,47 +41,59 @@ public class SharedData {
         this.threshold = threshold;
     }
 
-    public void addFrame(byte[] frame) {
-        addFrameQueue(frame);
+    public short[] cloneFrame(short[] frame) {
+        short[] copy = new short[frame.length];
+        System.arraycopy( frame, 0, copy, 0, frame.length );
+        return copy;
     }
 
-    public void addFrameQueue(byte[] frame) {
-        this.frameQueue.offer(frame);
-        if (this.frameQueue.size() < this.maxFrames) {
-            this.frameQueue.poll();
-        }
-    }
+    public short[] dequeueShort(short[] frame) {
+        short[] copy = cloneFrame(frame);
+        short[] swapped;
 
-    public void addFrameList(byte[] frame) {
-
-        if (this.pastFrames.size() < this.maxFrames) {
-            this.pastFrames.add(frame);
+        if (this.shortFrameQueue.size() > 10) {
+            swapped = this.shortFrameQueue.poll();
         }
         else {
-            randomSwap(frame);
+            swapped = copy;
         }
-    }
 
-    public void putFrame(int i, byte[] frame) {
-        this.pastFrames.set(i, frame);
-    }
+        if (this.shortFrameQueue.size() > this.maxFrames) {
+            this.shortFrameQueue.poll();
+        }
 
-    public byte[] getFrame(int i) {
-        return this.pastFrames.get(i);
-    }
-
-    public byte[] randomSwap(byte[] frame) {
-        Random random = new Random();
-        int size = this.pastFrames.size();
-        int i = random.nextInt(size);
-        byte[] swapped = getFrame(i);
-        putFrame(i, frame);
+        this.shortFrameQueue.offer(copy);
         return swapped;
     }
 
-    public byte[] fifoSwap(byte[] frame) {
-        byte[] swapped = this.frameQueue.poll();
-        this.frameQueue.offer(frame);
+    public short[] randomReplaceShort(short[] frame) {
+        short[] copy = cloneFrame(frame);
+        short[] swapped;
+
+        if (this.shortFrames.size() > 10) {
+            Random random = new Random();
+            int size = this.shortFrames.size();
+            int i = random.nextInt(size);
+            swapped = this.shortFrames.get(i);
+            this.shortFrames.set(i, copy);
+        }
+        else {
+            swapped = copy;
+        }
+
+        if (this.shortFrames.size() > this.maxFrames) {
+            this.shortFrames.remove(0);
+        }
+
+        this.shortFrames.add(copy);
         return swapped;
+    }
+
+    public void setRandomReplace(boolean replace) {
+        this.randomReplace = replace;
+    }
+
+    public boolean isRandomReplace() {
+        return this.randomReplace;
     }
 }

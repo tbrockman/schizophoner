@@ -10,6 +10,7 @@ import android.media.AudioTrack;
 import android.media.MediaRecorder;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.widget.ProgressBar;
 
 public class RecorderThread implements Runnable {
 
@@ -17,10 +18,12 @@ public class RecorderThread implements Runnable {
     private SharedData sd;
     private AudioRecord recorder;
     private AudioTrack player;
+    private ProgressBar pb;
 
-    public RecorderThread(Activity context, SharedData sd) {
+    public RecorderThread(Activity context, SharedData sd, ProgressBar pb) {
         this.context = context;
         this.sd = sd;
+        this.pb = pb;
     }
 
     @Override
@@ -55,9 +58,9 @@ public class RecorderThread implements Runnable {
             recorder.startRecording();
             player.play();
 
-            byte[] buffer = new byte[buffersize];
+            short[] buffer = new short[buffersize];
             double meanRms = sd.getMeanRms();
-            double threshold = sd.getThreshold();
+            double threshold;
 
             while (true) {
 
@@ -66,19 +69,34 @@ public class RecorderThread implements Runnable {
                     recorder.release();
                     player.stop();
                     player.release();
-                    break;
+                    return;
                 } else {
 
-                    if (recorder.read(buffer, 0, buffersize) < 0) {
+                    int readSize;
+                    threshold = sd.getThreshold();
+
+                    readSize = recorder.read(buffer, 0, buffersize);
+                    if (readSize < 0) {
                         Log.e(Utilities.LOG_TAG, "recorder write error");
                     }
-                    byte[] written;
-                    double rms = Utilities.rms(buffer);
+
+                    short[] written;
+
+                    double rms = Utilities.short_rms(buffer);
+
+                    pb.setProgress((int) rms - (int) meanRms);
 
                     // if difference exceeds threshold
                     // write a previously saved buffer instead
-                    if (Math.abs(meanRms - rms) > threshold + 1000) {
-                        written = sd.fifoSwap(buffer);
+
+                    if (rms - meanRms > threshold) {
+
+                        if (sd.isRandomReplace()) {
+                            written = sd.randomReplaceShort(buffer);
+                        }
+                        else {
+                            written = sd.dequeueShort(buffer);
+                        }
                     }
                     // otherwise, just play the sound
                     else {

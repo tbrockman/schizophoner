@@ -3,13 +3,15 @@ package io.github.tbrockman.schizophoner;
 import android.Manifest;
 import android.app.Activity;
 import android.content.pm.PackageManager;
-import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.ProgressBar;
+import android.widget.SeekBar;
+import android.widget.Switch;
 
 public class MainActivity extends Activity {
 
@@ -18,6 +20,10 @@ public class MainActivity extends Activity {
 
     private Button startButton;
     private Button calibrateButton;
+    private ProgressBar pb;
+    private SeekBar thresholdBar;
+    private Switch noiseMode;
+
     private Thread recorderThread;
     private Thread calibrateThread;
     private SharedData sd;
@@ -31,6 +37,8 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initialize();
+
+        pb = findViewById(R.id.progressBar);
 
         startButton = findViewById(R.id.start_audio);
         startButton.setOnClickListener(new View.OnClickListener() {
@@ -59,6 +67,28 @@ public class MainActivity extends Activity {
                 }
             }
         });
+
+        thresholdBar = findViewById(R.id.thresholdBar);
+        thresholdBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean b) {
+                sd.setThreshold(progress);
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        noiseMode = findViewById(R.id.noiseMode);
+        noiseMode.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                sd.setRandomReplace(isChecked);
+            }
+        });
     }
 
     @Override
@@ -80,23 +110,27 @@ public class MainActivity extends Activity {
 
     private void stopRecording() {
         recording = false;
+        calibrateButton.setEnabled(true);
         recorderThread.interrupt();
     }
 
     private void startRecording() {
         recording = true;
-        recorderThread = new Thread(new RecorderThread(this, sd));
+        calibrateButton.setEnabled(false);
+        recorderThread = new Thread(new RecorderThread(this, sd, pb));
         recorderThread.start();
     }
 
     private void startCalibrating() {
         calibrating = true;
+        startButton.setEnabled(false);
         calibrateThread = new Thread(new CalibrateThread(this, sd));
         calibrateThread.start();
     }
 
     private void stopCalibrating() {
         calibrating = false;
+        startButton.setEnabled(true);
         calibrateThread.interrupt();
     }
 }

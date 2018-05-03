@@ -1,10 +1,19 @@
 package io.github.tbrockman.schizophoner;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 public class Utilities {
 
     public static String LOG_TAG = "Schizophoner_v0";
+
+    public static double short_rms(short[] samples) {
+        double ret = 0;
+        for (int i = 0; i < samples.length; i++) {
+            ret += (samples[i] * samples[i]);
+        }
+        return Math.sqrt(ret / samples.length);
+    }
 
     public static double rms(byte[] bytes) {
         double ret = 0;
@@ -28,5 +37,13 @@ public class Utilities {
             out[i] = bb.getShort();
         }
         return out;
+    }
+
+    public static double calculateMean(ArrayList<Double> values) {
+        double acc = 0;
+        for (int i = 0; i < values.size(); i++) {
+            acc += values.get(i);
+        }
+        return acc / values.size();
     }
 }
