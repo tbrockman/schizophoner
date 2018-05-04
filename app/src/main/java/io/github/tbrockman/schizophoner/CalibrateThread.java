@@ -62,7 +62,6 @@ public class CalibrateThread implements Runnable {
                         Log.e(Utilities.LOG_TAG, "recorder write error");
                     }
 
-                    //sd.addShortFrame(buffer);
                     double rms = Utilities.short_rms(buffer);
                     rmsValues.add(rms);
                 }
